@@ -1,22 +1,40 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Section } from "@/components/ui/Section";
 import { SelectField } from "@/components/ui/SelectField";
 import { NumberField } from "@/components/ui/NumberField";
 import { Toast } from "@/components/Toast";
-import { MODALITES_REF, VIGNOBLES, METEO_OPTIONS } from "@/lib/constants";
+import { METEO_OPTIONS } from "@/lib/constants";
 import { supabase } from "@/lib/supabase/client";
 
-const PARCELLES: Record<string, { id: string; nom: string }[]> = {
-  Piotte: [{ id: "b1000000-0000-0000-0000-000000000001", nom: "Parcelle principale" }],
-  "Pape Clément": [{ id: "b1000000-0000-0000-0000-000000000002", nom: "Parcelle test" }],
-};
+interface VignobleItem { id: string; nom: string; }
+interface ParcelleItem { id: string; vignoble_id: string; nom: string; }
+interface ModaliteItem { rang: number; modalite: string; }
 
 export default function NewTraitementPage() {
   const router = useRouter();
   const today = new Date().toISOString().split("T")[0];
+
+  const [vignoblesList, setVignoblesList] = useState<VignobleItem[]>([]);
+  const [parcellesList, setParcellesList] = useState<ParcelleItem[]>([]);
+  const [modalitesList, setModalitesList] = useState<ModaliteItem[]>([]);
+
+  useEffect(() => {
+    async function load() {
+      const [v, p, m] = await Promise.all([
+        supabase.from("vignobles").select("id, nom").order("nom"),
+        supabase.from("parcelles").select("id, vignoble_id, nom").order("nom"),
+        supabase.from("referentiel_modalites").select("rang, modalite").eq("actif", true).order("rang"),
+      ]);
+      if (v.data) setVignoblesList(v.data);
+      if (p.data) setParcellesList(p.data);
+      if (m.data) setModalitesList(m.data);
+    }
+    load();
+  }, []);
+
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error"; visible: boolean }>({ message: "", type: "success", visible: false });
   const hideToast = useCallback(() => setToast((t) => ({ ...t, visible: false })), []);
@@ -33,8 +51,11 @@ export default function NewTraitementPage() {
   const [operateur, setOperateur] = useState("");
   const [notes, setNotes] = useState("");
 
-  const modaliteRef = rang > 0 ? MODALITES_REF.find((m) => m.rang === rang) : null;
-  const parcelles = vignoble ? PARCELLES[vignoble] ?? [] : [];
+  const modaliteRef = rang > 0 ? modalitesList.find((m) => m.rang === rang) : null;
+  const parcelles = vignoble ? parcellesList.filter(p => {
+    const v = vignoblesList.find(vv => vv.nom === vignoble);
+    return v && p.vignoble_id === v.id;
+  }) : [];
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -72,11 +93,11 @@ export default function NewTraitementPage() {
       <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={hideToast} />
       <form onSubmit={handleSubmit} className="space-y-3">
         <Section title="Identification" icon="📍" defaultOpen={true}>
-          <SelectField label="Vignoble" value={vignoble} onChange={(v) => { setVignoble(v); setParcelleId(""); }} options={VIGNOBLES} />
+          <SelectField label="Vignoble" value={vignoble} onChange={(v) => { setVignoble(v); setParcelleId(""); }} options={vignoblesList.map(v => v.nom)} />
           {parcelles.length > 0 && (
             <SelectField label="Parcelle" value={parcelleId} onChange={setParcelleId} options={parcelles.map(p => p.id)} />
           )}
-          <SelectField label="Rang" value={rang ? String(rang) : ""} onChange={(v) => setRang(Number(v))} options={["1","2","3","4","5","6","7"]} />
+          <SelectField label="Rang" value={rang ? String(rang) : ""} onChange={(v) => setRang(Number(v))} options={modalitesList.map(m => String(m.rang))} />
           {modaliteRef && (
             <div className="bg-[#8b5e3c]/5 rounded-lg px-3 py-2 text-sm">
               <span className="font-medium text-[#8b5e3c]">Modalité :</span> {modaliteRef.modalite}

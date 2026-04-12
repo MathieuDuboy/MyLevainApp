@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { href: "/observations/new", label: "Saisie", icon: "📝", exact: true },
   { href: "/observations", label: "Historique", icon: "📋", exact: true },
   { href: "/traitements", label: "Traitement", icon: "💧", exact: false },
+  { href: "/admin", label: "Admin", icon: "⚙️", exact: false },
 ];
 
 export function BottomNav() {
