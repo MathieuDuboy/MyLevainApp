@@ -103,6 +103,18 @@ export interface Observation {
   // Scores calculés
   score_plante: number | null;
   score_sanitaire: number | null;
+  score_rendement: number | null;
+  score_global: number | null;
+
+  // Indicateurs biologiques terrain (reco.md)
+  vie_biologique_visible: number | null;
+  presence_vers_de_terre: number | null;
+  structure_sol: number | null;
+  odeur_sol: number | null;
+
+  // Qualité raisin (reco.md)
+  brix: number | null;
+  ph_raisin: number | null;
 
   // Notes
   commentaires: string | null;
@@ -167,6 +179,13 @@ export interface AnalyseSol {
   // Scores calculés
   score_sante_sol: number | null;
   score_contamination_metaux: number | null;
+
+  // Champs complémentaires (reco.md)
+  calcium: number | null;
+  magnesium: number | null;
+  cec: number | null;
+  type_analyse: string | null;
+  analyse_microbiote: Record<string, unknown> | null;
 
   fichier_pdf_url: string | null;
   created_at: string;
@@ -415,4 +434,40 @@ export interface ValidationError {
   champ: string;
   message: string;
   type: 'required' | 'range' | 'format';
+}
+
+// ============================================================
+// Consolidation structure (reco.md)
+// ============================================================
+
+// ---- Notifications ----
+export interface Notification {
+  id: string;
+  user_id: string | null;
+  type: string;
+  message: string;
+  niveau: 'info' | 'warning' | 'error' | 'success';
+  lu: boolean;
+  created_at: string;
+}
+
+// ---- Accès vigneron par parcelle ----
+export interface UserParcelle {
+  id: string;
+  user_id: string;
+  parcelle_id: string;
+  created_at: string;
+}
+
+// ---- Indice de performance agronomique (KPI) ----
+export interface IndicePerformance {
+  id: string;
+  zone_culture_id: string;
+  campagne: string;
+  reduction_cuivre: number | null;
+  amelioration_sol: number | null;
+  rendement_score: number | null;
+  sante_plante: number | null;
+  indice_global: number | null;
+  created_at: string;
 }
