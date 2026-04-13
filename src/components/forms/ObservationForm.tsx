@@ -22,6 +22,7 @@ import {
 import { calcScorePlante, calcScoreSanitaire, calcScoreRendement } from "@/lib/scoring";
 import { RendementFields } from "@/components/forms/RendementFields";
 import { supabase } from "@/lib/supabase/client";
+import { MODALITES_REF } from "@/lib/constants";
 
 interface VignobleItem { id: string; nom: string; }
 interface ParcelleItem { id: string; vignoble_id: string; nom: string; }
@@ -35,10 +36,12 @@ export function ObservationForm({ initialData }: ObservationFormProps) {
   const today = new Date().toISOString().split("T")[0];
   const now = new Date().toTimeString().slice(0, 5);
 
-  // Données dynamiques depuis Supabase
+  // Données dynamiques depuis Supabase (avec fallback local pour les modalités)
   const [vignoblesList, setVignoblesList] = useState<VignobleItem[]>([]);
   const [parcellesList, setParcellesList] = useState<ParcelleItem[]>([]);
-  const [modalitesList, setModalitesList] = useState<ModaliteItem[]>([]);
+  const [modalitesList, setModalitesList] = useState<ModaliteItem[]>(
+    MODALITES_REF.map((m) => ({ ...m }))
+  );
 
   useEffect(() => {
     async function load() {
@@ -49,7 +52,8 @@ export function ObservationForm({ initialData }: ObservationFormProps) {
       ]);
       if (v.data) setVignoblesList(v.data);
       if (p.data) setParcellesList(p.data);
-      if (m.data) setModalitesList(m.data);
+      // Use Supabase data if available, otherwise keep the local fallback
+      if (m.data && m.data.length > 0) setModalitesList(m.data);
     }
     load();
   }, []);
