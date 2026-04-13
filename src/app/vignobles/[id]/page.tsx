@@ -110,7 +110,7 @@ export default function VignoblePage() {
       <div className="text-center py-16">
         <div className="text-4xl mb-3">🔍</div>
         <p className="text-gray-400 mb-4">Site non trouvé</p>
-        <Link href="/" className="text-sm text-emerald-600 font-medium hover:underline">← Retour à l'accueil</Link>
+        <Link href="/" className="text-sm text-emerald-600 font-medium hover:underline">← Retour</Link>
       </div>
     );
   }
