@@ -129,11 +129,15 @@ describe("dupliquerObservation", () => {
     expect(result.pression_mildiou).toBe(1);
   });
 
-  it("should copy meteo fields from source", () => {
+  it("should clear meteo fields (not copied from source)", () => {
     const result = dupliquerObservation(sourceObservation);
-    expect(result.meteo).toBe("Ensoleillé");
-    expect(result.temperature).toBe(18);
-    expect(result.humidite).toBe(65);
+    expect(result.meteo).toBeNull();
+    expect(result.temperature).toBeNull();
+    expect(result.humidite).toBeNull();
+    expect(result.vent).toBeNull();
+    expect(result.pluie_recente).toBeNull();
+    expect(result.derniere_pluie).toBeNull();
+    expect(result.humidite_sol).toBeNull();
   });
 
   it("should copy commentaires from source", () => {

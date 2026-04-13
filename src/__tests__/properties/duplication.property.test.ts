@@ -141,6 +141,9 @@ const STRIPPED_FIELDS = ['id', 'created_at', 'score_plante', 'score_sanitaire'] 
 // Fields updated by dupliquerObservation
 const UPDATED_FIELDS = ['date', 'heure', 'mois'] as const;
 
+// Fields cleared by dupliquerObservation (set to null)
+const CLEARED_FIELDS = ['meteo', 'temperature', 'humidite', 'vent', 'pluie_recente', 'derniere_pluie', 'humidite_sol'] as const;
+
 // ---------------------------------------------------------------------------
 // Property tests
 // ---------------------------------------------------------------------------
@@ -189,14 +192,13 @@ describe("Property 23: Duplication d'observation", () => {
   });
 
   // (d) All other fields must be identical to the source observation
-  it('should copy all non-stripped, non-updated fields identically from the source', () => {
+  it('should copy all non-stripped, non-updated, non-cleared fields identically from the source', () => {
     fc.assert(
       fc.property(observationArb, (source) => {
         const result = dupliquerObservation(source);
 
-        // Check every field on the source that is not stripped or updated
         const allSourceKeys = Object.keys(source) as (keyof Observation)[];
-        const skipKeys = new Set<string>([...STRIPPED_FIELDS, ...UPDATED_FIELDS]);
+        const skipKeys = new Set<string>([...STRIPPED_FIELDS, ...UPDATED_FIELDS, ...CLEARED_FIELDS]);
 
         for (const key of allSourceKeys) {
           if (skipKeys.has(key)) continue;
