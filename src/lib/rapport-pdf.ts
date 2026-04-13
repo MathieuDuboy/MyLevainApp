@@ -276,20 +276,29 @@ export function genererConclusionSynthetique(
 
 /**
  * Generate a PDF Blob from assembled rapport data.
- * Uses jspdf + jspdf-autotable via dynamic import to avoid SSR issues.
+ * Uses jspdf via dynamic import to avoid SSR issues.
+ * Tables are rendered as simple text lines (no autoTable dependency).
  */
 export async function genererRapportPDF(
   rapportData: RapportData
 ): Promise<Blob> {
-  const { default: jsPDF } = await import("jspdf");
-  await import("jspdf-autotable");
+  const jspdfModule = await import("jspdf");
+  const jsPDF = jspdfModule.default ?? jspdfModule.jsPDF;
 
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
   let y = 20;
 
-  // ---- Header section ----
-  doc.setFontSize(18);
+  function checkPage(needed: number) {
+    if (y + needed > pageHeight - 20) {
+      doc.addPage();
+      y = 20;
+    }
+  }
+
+  // ---- Header ----
+  doc.setFontSize(20);
   doc.setFont("helvetica", "bold");
   doc.text("Rapport de Campagne", pageWidth / 2, y, { align: "center" });
   y += 10;
@@ -300,135 +309,112 @@ export async function genererRapportPDF(
 
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
-  doc.text(
-    `Parcelle : ${rapportData.header.parcelle_nom} | Cépage : ${rapportData.header.cepage}`,
-    pageWidth / 2,
-    y,
-    { align: "center" }
-  );
+  doc.text(`Parcelle : ${rapportData.header.parcelle_nom} | Cépage : ${rapportData.header.cepage}`, pageWidth / 2, y, { align: "center" });
   y += 6;
-  doc.text(`Période : ${rapportData.header.periode}`, pageWidth / 2, y, {
-    align: "center",
-  });
+  doc.text(`Période : ${rapportData.header.periode}`, pageWidth / 2, y, { align: "center" });
   y += 12;
 
-  // ---- Scores section ----
-  doc.setFontSize(12);
+  // ---- Scores ----
+  doc.setFontSize(13);
   doc.setFont("helvetica", "bold");
   doc.text("Scores", 14, y);
-  y += 6;
+  y += 7;
 
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   const { scores } = rapportData;
-  const scoreLines = [
-    `Score global : ${scores.global ?? "N/A"}`,
-    `Score sol : ${scores.sol ?? "N/A"}`,
-    `Score plante : ${scores.plante ?? "N/A"}`,
-    `Score maladie : ${scores.maladie ?? "N/A"}`,
-    `Score biostimulant : ${scores.biostimulant ?? "N/A"}`,
+  const scoreItems = [
+    ["Score global", scores.global],
+    ["Score plante", scores.plante],
+    ["Score sanitaire / maladie", scores.maladie],
+    ["Score sol", scores.sol],
+    ["Score biostimulant", scores.biostimulant],
   ];
-  for (const line of scoreLines) {
-    doc.text(line, 14, y);
+  for (const [label, val] of scoreItems) {
+    doc.text(`${label} : ${val ?? "N/A"} / 5`, 18, y);
     y += 5;
   }
-  y += 6;
+  y += 8;
+
+  // ---- Simple table helper ----
+  function drawTable(title: string, headers: string[], rows: string[][]) {
+    checkPage(20 + rows.length * 5);
+    doc.setFontSize(13);
+    doc.setFont("helvetica", "bold");
+    doc.text(title, 14, y);
+    y += 7;
+
+    const colWidth = (pageWidth - 28) / headers.length;
+
+    // Header row
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.setFillColor(240, 240, 240);
+    doc.rect(14, y - 3.5, pageWidth - 28, 5, "F");
+    headers.forEach((h, i) => {
+      doc.text(h, 16 + i * colWidth, y, { maxWidth: colWidth - 2 });
+    });
+    y += 5;
+
+    // Data rows
+    doc.setFont("helvetica", "normal");
+    for (const row of rows) {
+      checkPage(6);
+      row.forEach((cell, i) => {
+        doc.text(String(cell), 16 + i * colWidth, y, { maxWidth: colWidth - 2 });
+      });
+      y += 4.5;
+    }
+    y += 6;
+  }
 
   // ---- Observations table ----
   if (rapportData.observations.length > 0) {
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.text("Observations", 14, y);
-    y += 2;
-
-    (doc as unknown as { autoTable: (opts: Record<string, unknown>) => void }).autoTable({
-      startY: y,
-      head: [["Date", "Rang", "Modalité", "Vigueur", "Mildiou", "Sc. Plante", "Sc. Sanitaire"]],
-      body: rapportData.observations.map((o) => [
-        o.date,
-        o.rang,
-        o.modalite,
-        o.vigueur ?? "-",
-        o.mildiou_presence ?? "-",
-        o.score_plante ?? "-",
-        o.score_sanitaire ?? "-",
-      ]),
-      margin: { left: 14, right: 14 },
-      styles: { fontSize: 8 },
-    });
-
-    y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
+    drawTable(
+      `Observations (${rapportData.observations.length})`,
+      ["Date", "Rang", "Modalité", "Vigueur", "Mildiou", "Sc.Plante", "Sc.Sanit."],
+      rapportData.observations.map((o) => [
+        o.date, String(o.rang), o.modalite,
+        o.vigueur != null ? String(o.vigueur) : "-",
+        o.mildiou_presence != null ? String(o.mildiou_presence) : "-",
+        o.score_plante != null ? String(o.score_plante) : "-",
+        o.score_sanitaire != null ? String(o.score_sanitaire) : "-",
+      ])
+    );
   }
 
   // ---- Traitements table ----
   if (rapportData.traitements.length > 0) {
-    if (y > 250) {
-      doc.addPage();
-      y = 20;
-    }
-
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.text("Traitements", 14, y);
-    y += 2;
-
-    (doc as unknown as { autoTable: (opts: Record<string, unknown>) => void }).autoTable({
-      startY: y,
-      head: [["Date", "Produit", "Type", "Dose", "Rang", "Modalité"]],
-      body: rapportData.traitements.map((t) => [
-        t.date,
-        t.produit,
-        t.type_traitement ?? "-",
-        t.dose ?? "-",
-        t.rang,
-        t.modalite,
-      ]),
-      margin: { left: 14, right: 14 },
-      styles: { fontSize: 8 },
-    });
-
-    y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
+    drawTable(
+      `Traitements (${rapportData.traitements.length})`,
+      ["Date", "Produit", "Type", "Dose", "Rang", "Modalité"],
+      rapportData.traitements.map((t) => [
+        t.date, t.produit, t.type_traitement ?? "-",
+        t.dose ?? "-", String(t.rang), t.modalite,
+      ])
+    );
   }
 
   // ---- Analyses sol table ----
   if (rapportData.analyses_sol.length > 0) {
-    if (y > 250) {
-      doc.addPage();
-      y = 20;
-    }
-
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.text("Analyses Sol", 14, y);
-    y += 2;
-
-    (doc as unknown as { autoTable: (opts: Record<string, unknown>) => void }).autoTable({
-      startY: y,
-      head: [["Date", "Phase", "pH", "MO (%)", "Score Sol"]],
-      body: rapportData.analyses_sol.map((a) => [
-        a.date_prelevement,
-        a.phase,
-        a.ph ?? "-",
-        a.matiere_organique_pct ?? "-",
-        a.score_sante_sol ?? "-",
-      ]),
-      margin: { left: 14, right: 14 },
-      styles: { fontSize: 8 },
-    });
-
-    y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
+    drawTable(
+      `Analyses Sol (${rapportData.analyses_sol.length})`,
+      ["Date", "Phase", "pH", "MO (%)", "Score Sol"],
+      rapportData.analyses_sol.map((a) => [
+        a.date_prelevement, a.phase,
+        a.ph != null ? String(a.ph) : "-",
+        a.matiere_organique_pct != null ? String(a.matiere_organique_pct) : "-",
+        a.score_sante_sol != null ? String(a.score_sante_sol) : "-",
+      ])
+    );
   }
 
-  // ---- Conclusion section ----
-  if (y > 250) {
-    doc.addPage();
-    y = 20;
-  }
-
-  doc.setFontSize(12);
+  // ---- Conclusion ----
+  checkPage(30);
+  doc.setFontSize(13);
   doc.setFont("helvetica", "bold");
   doc.text("Conclusion", 14, y);
-  y += 6;
+  y += 7;
 
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
