@@ -64,16 +64,16 @@ function AnalyseSolCard({ analyse }: { analyse: typeof DEMO_ANALYSES[0] }) {
             <span className="font-medium">{analyse.respiration_sol}</span>
           </div>
         )}
-        {(analyse as Record<string, unknown>).calcium != null && (
+        {analyse.calcium != null && (
           <div className="flex justify-between py-1 border-b border-gray-50">
             <span className="text-gray-500">Calcium</span>
-            <span className="font-medium">{(analyse as Record<string, unknown>).calcium as number}</span>
+            <span className="font-medium">{analyse.calcium}</span>
           </div>
         )}
-        {(analyse as Record<string, unknown>).magnesium != null && (
+        {analyse.magnesium != null && (
           <div className="flex justify-between py-1 border-b border-gray-50">
             <span className="text-gray-500">Magnésium</span>
-            <span className="font-medium">{(analyse as Record<string, unknown>).magnesium as number}</span>
+            <span className="font-medium">{analyse.magnesium}</span>
           </div>
         )}
       </div>
