@@ -118,6 +118,51 @@ export function ObservationForm({ initialData }: ObservationFormProps) {
   // Photos
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
 
+  // Re-fill form when initialData arrives (async duplication)
+  useEffect(() => {
+    if (!initialData) return;
+    setParcelleId(initialData.parcelle_id ?? "");
+    setRang(initialData.rang ?? 0);
+    setDate(initialData.date ?? today);
+    setHeure(initialData.heure ?? now);
+    setMeteo(initialData.meteo ?? "");
+    setTemperature(initialData.temperature ?? null);
+    setHumidite(initialData.humidite ?? null);
+    setVent(initialData.vent ?? "");
+    setPluieRecente(initialData.pluie_recente === true ? "Oui" : initialData.pluie_recente === false ? "Non" : "");
+    setDernierePluie(initialData.derniere_pluie ?? "");
+    setHumiditeSol(initialData.humidite_sol ?? "");
+    setVolumeApplique(initialData.volume_applique_l ?? null);
+    setPhSurnageant(initialData.ph_surnageant ?? null);
+    setSurnageantL(initialData.surnageant_l ?? null);
+    setEauL(initialData.eau_l ?? null);
+    setCuivre(initialData.cuivre === true ? "Oui" : initialData.cuivre === false ? "Non" : "");
+    setDateSurnageant(initialData.date_surnageant ?? "");
+    setDateCuivre(initialData.date_cuivre ?? "");
+    setVigueur(initialData.vigueur ?? null);
+    setCroissance(initialData.croissance ?? null);
+    setHomogeneite(initialData.homogeneite ?? null);
+    setCouleurFeuilles(initialData.couleur_feuilles ?? null);
+    setEpaisseurFeuilles(initialData.epaisseur_feuilles ?? null);
+    setTurgescence(initialData.turgescence ?? null);
+    setBrulures(initialData.brulures ?? null);
+    setNecroses(initialData.necroses ?? null);
+    setDeformations(initialData.deformations ?? null);
+    setMildiouPresence(initialData.mildiou_presence ?? null);
+    setMildiouIntensite(initialData.mildiou_intensite ?? null);
+    setLocalisationMildiou(initialData.localisation_mildiou ?? "");
+    setProgression(initialData.progression ?? "");
+    setPressionMildiou(initialData.pression_mildiou ?? null);
+    setNbGrappes(initialData.nb_grappes_par_cep ?? null);
+    setTailleGrappes(initialData.taille_grappes ?? null);
+    setHomogeneiteGrappes(initialData.homogeneite_grappes ?? null);
+    setNombreGrappes(initialData.nombre_grappes ?? null);
+    setPoidsMoyenGrappe(initialData.poids_moyen_grappe ?? null);
+    setRendementEstime(initialData.rendement_estime ?? null);
+    setRendementReel(initialData.rendement_reel ?? null);
+    setCommentaires(initialData.commentaires ?? "");
+  }, [initialData]);
+
   // Validation
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const errorFor = (champ: string) => validationErrors.find(e => e.champ === champ)?.message;
