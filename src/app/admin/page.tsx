@@ -15,6 +15,10 @@ interface Parcelle { id: string; vignoble_id: string; nom: string; cepage: strin
 interface ModaliteRef { rang: number; modalite: string; description: string | null; surnageant_l: number; eau_l: number; volume_l: number; actif: boolean; }
 interface ConfigItem { cle: string; valeur: string; categorie: string; description: string | null; }
 interface AppUserItem { id: string; email: string; nom: string; role: string; approved: boolean; created_at: string; last_login: string | null; }
+interface TypeCultureItem { id: string; code: string; nom: string; description: string | null; actif: boolean; }
+interface EspeceItem { id: string; type_culture_id: string; code: string; nom: string; actif: boolean; }
+interface SiteItem { id: string; nom: string; type_site: string | null; localisation: string | null; actif: boolean; }
+interface ZoneCultureItem { id: string; site_id: string; type_culture_id: string; espece_id: string | null; nom: string; surface_ha: number | null; latitude: number | null; longitude: number | null; actif: boolean; }
 
 export default function AdminPage() {
   const { user } = useAuth();
@@ -25,6 +29,10 @@ export default function AdminPage() {
   const [modalites, setModalites] = useState<ModaliteRef[]>([]);
   const [configs, setConfigs] = useState<ConfigItem[]>([]);
   const [appUsers, setAppUsers] = useState<AppUserItem[]>([]);
+  const [typesCulture, setTypesCulture] = useState<TypeCultureItem[]>([]);
+  const [especes, setEspeces] = useState<EspeceItem[]>([]);
+  const [sites, setSites] = useState<SiteItem[]>([]);
+  const [zonesCulture, setZonesCulture] = useState<ZoneCultureItem[]>([]);
   const [toast, setToast] = useState({ message: "", type: "success" as "success" | "error", visible: false });
   const hideToast = useCallback(() => setToast(t => ({ ...t, visible: false })), []);
 
@@ -59,6 +67,18 @@ export default function AdminPage() {
         const usersData = await usersRes.json();
         setAppUsers(usersData.users || []);
       }
+
+      // Load multi-culture data
+      const [tc, esp, sit, zc] = await Promise.all([
+        supabase.from("types_culture").select("*").order("nom"),
+        supabase.from("especes").select("*").order("nom"),
+        supabase.from("sites").select("*").order("nom"),
+        supabase.from("zones_culture").select("*").order("nom"),
+      ]);
+      if (tc.data) setTypesCulture(tc.data);
+      if (esp.data) setEspeces(esp.data);
+      if (sit.data) setSites(sit.data);
+      if (zc.data) setZonesCulture(zc.data);
 
       setLoading(false);
     }
@@ -196,6 +216,76 @@ export default function AdminPage() {
 
   if (user?.role !== 'admin') return null;
 
+  // ---- CRUD Sites ----
+  async function saveSite() {
+    setSaving(true);
+    const d = modal?.data;
+    if (d.id) {
+      await supabase.from("sites").update({ nom: d.nom, type_site: d.type_site || null, localisation: d.localisation || null }).eq("id", d.id);
+      showToast("Site modifié");
+    } else {
+      const { error } = await supabase.from("sites").insert({ nom: d.nom, type_site: d.type_site || null, localisation: d.localisation || null, actif: true });
+      if (error) showToast(error.message, "error"); else showToast("Site ajouté");
+    }
+    setSaving(false); setModal(null);
+    const { data } = await supabase.from("sites").select("*").order("nom");
+    if (data) setSites(data);
+  }
+
+  async function deleteSite(id: string) {
+    if (!confirm("Supprimer ce site et toutes ses zones ?")) return;
+    await supabase.from("sites").delete().eq("id", id);
+    setSites(s => s.filter(x => x.id !== id));
+    showToast("Site supprimé");
+  }
+
+  // ---- CRUD Zones de culture ----
+  async function saveZoneCulture() {
+    setSaving(true);
+    const d = modal?.data;
+    if (d.id) {
+      await supabase.from("zones_culture").update({
+        nom: d.nom, site_id: d.site_id, type_culture_id: d.type_culture_id,
+        espece_id: d.espece_id || null, surface_ha: d.surface_ha || null,
+        latitude: d.latitude || null, longitude: d.longitude || null,
+      }).eq("id", d.id);
+      showToast("Zone modifiée");
+    } else {
+      const { error } = await supabase.from("zones_culture").insert({
+        nom: d.nom, site_id: d.site_id, type_culture_id: d.type_culture_id,
+        espece_id: d.espece_id || null, surface_ha: d.surface_ha || null,
+        latitude: d.latitude || null, longitude: d.longitude || null, actif: true,
+      });
+      if (error) showToast(error.message, "error"); else showToast("Zone ajoutée");
+    }
+    setSaving(false); setModal(null);
+    const { data } = await supabase.from("zones_culture").select("*").order("nom");
+    if (data) setZonesCulture(data);
+  }
+
+  async function deleteZoneCulture(id: string) {
+    if (!confirm("Supprimer cette zone de culture ?")) return;
+    await supabase.from("zones_culture").delete().eq("id", id);
+    setZonesCulture(z => z.filter(x => x.id !== id));
+    showToast("Zone supprimée");
+  }
+
+  // ---- CRUD Espèces ----
+  async function saveEspece() {
+    setSaving(true);
+    const d = modal?.data;
+    if (d.id) {
+      await supabase.from("especes").update({ nom: d.nom, code: d.code, type_culture_id: d.type_culture_id }).eq("id", d.id);
+      showToast("Espèce modifiée");
+    } else {
+      const { error } = await supabase.from("especes").insert({ nom: d.nom, code: d.code, type_culture_id: d.type_culture_id, actif: true });
+      if (error) showToast(error.message, "error"); else showToast("Espèce ajoutée");
+    }
+    setSaving(false); setModal(null);
+    const { data } = await supabase.from("especes").select("*").order("nom");
+    if (data) setEspeces(data);
+  }
+
   // ---- RENDER ----
   if (loading) return <div className="pt-4"><ListSkeleton count={4} /></div>;
 
@@ -284,6 +374,78 @@ export default function AdminPage() {
       </AdminCard>
 
       {/* ---- MODALITÉS ---- */}
+      <h2 className="text-lg font-bold gradient-text mt-6">🌍 Multi-cultures</h2>
+
+      {/* ---- SITES ---- */}
+      <AdminCard title="🏠 Sites / Exploitations" onAdd={() => setModal({ type: "site", data: { nom: "", type_site: "", localisation: "" } })}>
+        {sites.map(s => (
+          <div key={s.id} className="flex items-center justify-between px-4 py-3">
+            <div>
+              <div className="font-medium text-sm">{s.nom}</div>
+              <div className="text-xs text-gray-500">{s.type_site || "—"} · {s.localisation || "—"}</div>
+            </div>
+            <div className="flex gap-1.5">
+              <button onClick={() => setModal({ type: "site", data: { ...s } })} className="text-xs bg-gray-100 px-2.5 py-1.5 rounded-lg active:scale-95">✏️</button>
+              <button onClick={() => deleteSite(s.id)} className="text-xs bg-red-50 text-red-600 px-2.5 py-1.5 rounded-lg active:scale-95">🗑</button>
+            </div>
+          </div>
+        ))}
+        {sites.length === 0 && <p className="px-4 py-3 text-sm text-gray-400">Aucun site</p>}
+      </AdminCard>
+
+      {/* ---- ZONES DE CULTURE ---- */}
+      <AdminCard title="🌱 Zones de culture" onAdd={() => setModal({ type: "zone_culture", data: { nom: "", site_id: sites[0]?.id || "", type_culture_id: typesCulture[0]?.id || "", espece_id: "", surface_ha: null, latitude: null, longitude: null } })}>
+        {zonesCulture.map(z => (
+          <div key={z.id} className="flex items-center justify-between px-4 py-3">
+            <div>
+              <div className="font-medium text-sm">{z.nom}</div>
+              <div className="text-xs text-gray-500">
+                {sites.find(s => s.id === z.site_id)?.nom || "?"} · {typesCulture.find(t => t.id === z.type_culture_id)?.nom || "?"} · {especes.find(e => e.id === z.espece_id)?.nom || "—"}
+                {z.surface_ha && ` · ${z.surface_ha} ha`}
+              </div>
+            </div>
+            <div className="flex gap-1.5">
+              <button onClick={() => setModal({ type: "zone_culture", data: { ...z } })} className="text-xs bg-gray-100 px-2.5 py-1.5 rounded-lg active:scale-95">✏️</button>
+              <button onClick={() => deleteZoneCulture(z.id)} className="text-xs bg-red-50 text-red-600 px-2.5 py-1.5 rounded-lg active:scale-95">🗑</button>
+            </div>
+          </div>
+        ))}
+        {zonesCulture.length === 0 && <p className="px-4 py-3 text-sm text-gray-400">Aucune zone de culture</p>}
+      </AdminCard>
+
+      {/* ---- TYPES DE CULTURE ---- */}
+      <AdminCard title="🏷️ Types de culture">
+        {typesCulture.map(tc => (
+          <div key={tc.id} className="flex items-center justify-between px-4 py-3">
+            <div>
+              <div className="font-medium text-sm">{tc.nom}</div>
+              <div className="text-xs text-gray-500">{tc.code} · {tc.description || "—"}</div>
+            </div>
+            <span className={`text-xs px-2 py-0.5 rounded-full ${tc.actif ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+              {tc.actif ? 'Actif' : 'Inactif'}
+            </span>
+          </div>
+        ))}
+        {typesCulture.length === 0 && <p className="px-4 py-3 text-sm text-gray-400">Aucun type (exécuter migration 008)</p>}
+      </AdminCard>
+
+      {/* ---- ESPÈCES ---- */}
+      <AdminCard title="🌿 Espèces" onAdd={() => setModal({ type: "espece", data: { nom: "", code: "", type_culture_id: typesCulture[0]?.id || "" } })}>
+        {especes.map(e => (
+          <div key={e.id} className="flex items-center justify-between px-4 py-3">
+            <div>
+              <div className="font-medium text-sm">{e.nom}</div>
+              <div className="text-xs text-gray-500">{e.code} · {typesCulture.find(t => t.id === e.type_culture_id)?.nom || "?"}</div>
+            </div>
+            <button onClick={() => setModal({ type: "espece", data: { ...e } })} className="text-xs bg-gray-100 px-2.5 py-1.5 rounded-lg active:scale-95">✏️</button>
+          </div>
+        ))}
+        {especes.length === 0 && <p className="px-4 py-3 text-sm text-gray-400">Aucune espèce (exécuter migration 008)</p>}
+      </AdminCard>
+
+      <h2 className="text-lg font-bold gradient-text mt-6">🧪 Protocole</h2>
+
+      {/* ---- MODALITÉS (original) ---- */}
       <AdminCard title="🧪 Modalités (protocole)" onAdd={() => setModal({ type: "modalite_new", data: { rang: modalites.length + 1, modalite: "", description: "", surnageant_l: 0, eau_l: 0, volume_l: 0, actif: true } })}>
         {modalites.map(m => (
           <div key={m.rang} className={`flex items-center justify-between px-4 py-3 ${!m.actif ? "opacity-40" : ""}`}>
@@ -389,6 +551,70 @@ export default function AdminPage() {
         </select>
         <label className="text-sm font-medium">Description</label>
         <input value={modal?.data?.description || ""} onChange={e => updateModal("description", e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+      </EditModal>
+
+      {/* Modal Site */}
+      <EditModal open={modal?.type === "site"} title={modal?.data?.id ? "Modifier site" : "Nouveau site"} onClose={() => setModal(null)} onSave={saveSite} saving={saving}>
+        <label className="text-sm font-medium">Nom *</label>
+        <input value={modal?.data?.nom || ""} onChange={e => updateModal("nom", e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="ex: Ferme des Tomates" />
+        <label className="text-sm font-medium">Type de site</label>
+        <select value={modal?.data?.type_site || ""} onChange={e => updateModal("type_site", e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+          <option value="">Sélectionner...</option>
+          <option value="chateau">Château</option>
+          <option value="domaine">Domaine</option>
+          <option value="exploitation">Exploitation</option>
+          <option value="ferme">Ferme</option>
+          <option value="serre">Serre</option>
+          <option value="autre">Autre</option>
+        </select>
+        <label className="text-sm font-medium">Localisation</label>
+        <input value={modal?.data?.localisation || ""} onChange={e => updateModal("localisation", e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="ex: Lot-et-Garonne" />
+      </EditModal>
+
+      {/* Modal Zone de culture */}
+      <EditModal open={modal?.type === "zone_culture"} title={modal?.data?.id ? "Modifier zone" : "Nouvelle zone de culture"} onClose={() => setModal(null)} onSave={saveZoneCulture} saving={saving}>
+        <label className="text-sm font-medium">Nom *</label>
+        <input value={modal?.data?.nom || ""} onChange={e => updateModal("nom", e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="ex: Serre Tomates Roma" />
+        <label className="text-sm font-medium">Site *</label>
+        <select value={modal?.data?.site_id || ""} onChange={e => updateModal("site_id", e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+          <option value="">Sélectionner...</option>
+          {sites.map(s => <option key={s.id} value={s.id}>{s.nom}</option>)}
+        </select>
+        <label className="text-sm font-medium">Type de culture *</label>
+        <select value={modal?.data?.type_culture_id || ""} onChange={e => updateModal("type_culture_id", e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+          <option value="">Sélectionner...</option>
+          {typesCulture.map(tc => <option key={tc.id} value={tc.id}>{tc.nom}</option>)}
+        </select>
+        <label className="text-sm font-medium">Espèce</label>
+        <select value={modal?.data?.espece_id || ""} onChange={e => updateModal("espece_id", e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+          <option value="">Sélectionner...</option>
+          {especes.filter(e => !modal?.data?.type_culture_id || e.type_culture_id === modal?.data?.type_culture_id).map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}
+        </select>
+        <label className="text-sm font-medium">Surface (ha)</label>
+        <input type="number" step="0.01" value={modal?.data?.surface_ha ?? ""} onChange={e => updateModal("surface_ha", e.target.value ? Number(e.target.value) : null)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="text-xs font-medium">Latitude</label>
+            <input type="number" step="0.0000001" value={modal?.data?.latitude ?? ""} onChange={e => updateModal("latitude", e.target.value ? Number(e.target.value) : null)} className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm" placeholder="44.8378" />
+          </div>
+          <div>
+            <label className="text-xs font-medium">Longitude</label>
+            <input type="number" step="0.0000001" value={modal?.data?.longitude ?? ""} onChange={e => updateModal("longitude", e.target.value ? Number(e.target.value) : null)} className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm" placeholder="-0.5792" />
+          </div>
+        </div>
+      </EditModal>
+
+      {/* Modal Espèce */}
+      <EditModal open={modal?.type === "espece"} title={modal?.data?.id ? "Modifier espèce" : "Nouvelle espèce"} onClose={() => setModal(null)} onSave={saveEspece} saving={saving}>
+        <label className="text-sm font-medium">Nom *</label>
+        <input value={modal?.data?.nom || ""} onChange={e => updateModal("nom", e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="ex: Tomate cerise" />
+        <label className="text-sm font-medium">Code *</label>
+        <input value={modal?.data?.code || ""} onChange={e => updateModal("code", e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono" placeholder="ex: tomate_cerise" />
+        <label className="text-sm font-medium">Type de culture *</label>
+        <select value={modal?.data?.type_culture_id || ""} onChange={e => updateModal("type_culture_id", e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+          <option value="">Sélectionner...</option>
+          {typesCulture.map(tc => <option key={tc.id} value={tc.id}>{tc.nom}</option>)}
+        </select>
       </EditModal>
     </div>
   );
