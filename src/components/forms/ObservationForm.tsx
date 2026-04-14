@@ -21,6 +21,7 @@ import {
 } from "@/lib/constants";
 import { calcScorePlante, calcScoreSanitaire, calcScoreRendement } from "@/lib/scoring";
 import { RendementFields } from "@/components/forms/RendementFields";
+import { DerniereAnalyseLaboCard } from "@/components/forms/DerniereAnalyseLaboCard";
 import { supabase } from "@/lib/supabase/client";
 import { MODALITES_REF } from "@/lib/constants";
 
@@ -367,6 +368,9 @@ export function ObservationForm({ initialData }: ObservationFormProps) {
           <HelpIcon codeIndicateur={INDICATEUR_MAPPING.humidite_sol} />
         </div>
       </Section>
+
+      {/* Dernière analyse labo */}
+      <DerniereAnalyseLaboCard parcelleId={parcelleId} />
 
       {/* Traitement */}
       <Section title="Traitement appliqué" icon="💧">

@@ -471,3 +471,30 @@ export interface IndicePerformance {
   indice_global: number | null;
   created_at: string;
 }
+
+// ============================================================
+// Rajouts terrain (rajouts.txt)
+// ============================================================
+
+// ---- Protocoles ----
+export interface Protocole {
+  id: string;
+  code: string;
+  label: string;
+  type: 'sequentiel' | 'meme_temps' | 'simple';
+  description: string | null;
+  actif: boolean;
+  ordre: number;
+}
+
+// ---- Produits MyLevain ----
+export interface Produit {
+  id: string;
+  code: string;
+  label: string;
+  type: 'levain' | 'phyto' | 'autre';
+  origine: string | null;
+  description: string | null;
+  actif: boolean;
+  ordre: number;
+}
