@@ -114,7 +114,7 @@ export default function NewTraitementPage() {
         <Section title="Identification" icon="📍" defaultOpen={true}>
           <SelectField label="Vignoble" value={vignoble} onChange={(v) => { setVignoble(v); setParcelleId(""); }} options={vignoblesList.map(v => v.nom)} />
           {parcelles.length > 0 && (
-            <SelectField label="Parcelle" value={parcelleId} onChange={setParcelleId} options={parcelles.map(p => p.id)} />
+            <SelectField label="Parcelle" value={parcelleId} onChange={setParcelleId} options={parcelles.map(p => ({ value: p.id, label: p.nom }))} />
           )}
           <SelectField label="Rang" value={rang ? String(rang) : ""} onChange={(v) => setRang(Number(v))} options={modalitesList.map(m => String(m.rang))} />
           {modaliteRef && (

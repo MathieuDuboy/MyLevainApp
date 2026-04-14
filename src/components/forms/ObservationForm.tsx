@@ -312,15 +312,11 @@ export function ObservationForm({ initialData }: ObservationFormProps) {
         <SelectField label="Vignoble" value={vignoble} onChange={(v) => { setVignoble(v); setParcelleId(""); }} options={vignoblesList.map(v => v.nom)} />
         {parcelles.length > 0 && (
           <div data-field="parcelle_id">
-            <SelectField label="Parcelle" value={parcelleId} onChange={(v) => { setParcelleId(v); clearError("parcelle_id"); }} options={parcelles.map(p => p.id)} />
+            <SelectField label="Parcelle" value={parcelleId} onChange={(v) => { setParcelleId(v); clearError("parcelle_id"); }} options={parcelles.map(p => ({ value: p.id, label: p.nom }))} />
             <ValidationMessage message={errorFor("parcelle_id")} />
           </div>
         )}
-        {parcelles.length > 0 && (
-          <p className="text-xs text-gray-400">
-            {parcelles.find(p => p.id === parcelleId)?.nom ?? ""}
-          </p>
-        )}
+        {/* parcelle name now shown in select */}
         <div data-field="rang">
           <SelectField label="Rang" value={rang ? String(rang) : ""} onChange={(v) => { handleRangChange(Number(v)); clearError("rang"); }} options={rangs.map(String)} />
           <ValidationMessage message={errorFor("rang")} />

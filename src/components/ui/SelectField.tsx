@@ -1,10 +1,15 @@
 "use client";
 
+interface SelectOption {
+  value: string;
+  label: string;
+}
+
 interface SelectFieldProps {
   label: string;
   value: string;
   onChange: (val: string) => void;
-  options: readonly string[];
+  options: readonly string[] | SelectOption[];
   placeholder?: string;
 }
 
@@ -15,12 +20,15 @@ export function SelectField({ label, value, onChange, options, placeholder }: Se
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2d5016]/30"
+        className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white/80 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400"
       >
         <option value="">{placeholder || "Sélectionner..."}</option>
-        {options.map((opt) => (
-          <option key={opt} value={opt}>{opt}</option>
-        ))}
+        {options.map((opt) => {
+          if (typeof opt === "string") {
+            return <option key={opt} value={opt}>{opt}</option>;
+          }
+          return <option key={opt.value} value={opt.value}>{opt.label}</option>;
+        })}
       </select>
     </div>
   );

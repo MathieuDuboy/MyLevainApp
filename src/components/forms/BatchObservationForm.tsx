@@ -205,11 +205,9 @@ export function BatchObservationForm() {
       <Section title="Champs communs" icon="📋" defaultOpen={true}>
         <SelectField label="Vignoble" value={vignoble} onChange={(v) => { setVignoble(v); setParcelleId(""); }} options={vignoblesList.map((v) => v.nom)} />
         {parcelles.length > 0 && (
-          <SelectField label="Parcelle" value={parcelleId} onChange={setParcelleId} options={parcelles.map((p) => p.id)} />
+          <SelectField label="Parcelle" value={parcelleId} onChange={setParcelleId} options={parcelles.map((p) => ({ value: p.id, label: p.nom }))} />
         )}
-        {parcelles.length > 0 && (
-          <p className="text-xs text-gray-400">{parcelles.find((p) => p.id === parcelleId)?.nom ?? ""}</p>
-        )}
+        {/* parcelle name now in select */}
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700">Date</label>
